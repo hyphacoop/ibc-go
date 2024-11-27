@@ -1,7 +1,6 @@
 package simapp
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 
@@ -12,12 +11,14 @@ import (
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	"github.com/launchdarkly/go-jsonstream/v3/jwriter"
 )
 
 // ExportAppStateAndValidators exports the state of the application for a genesis
 // file.
 func (app *SimApp) ExportAppStateAndValidators(
 	forZeroHeight bool, jailAllowedAddrs []string, modulesToExport []string,
+	writer *jwriter.Writer,
 ) (servertypes.ExportedApp, error) {
 	// as if they could withdraw from the start of the next block
 	ctx := app.NewContext(true)
@@ -30,18 +31,17 @@ func (app *SimApp) ExportAppStateAndValidators(
 		app.prepForZeroHeightGenesis(ctx, jailAllowedAddrs)
 	}
 
-	genState, err := app.ModuleManager.ExportGenesis(ctx, app.appCodec)
+	err := app.ModuleManager.ExportGenesis(ctx, app.appCodec, writer)
 	if err != nil {
 		return servertypes.ExportedApp{}, err
 	}
-	appState, err := json.MarshalIndent(genState, "", "  ")
-	if err != nil {
-		return servertypes.ExportedApp{}, err
-	}
+	// appState, err := json.MarshalIndent(genState, "", "  ")
+	// if err != nil {
+	// 	return servertypes.ExportedApp{}, err
+	// }
 
 	validators, err := staking.WriteValidators(ctx, app.StakingKeeper)
 	return servertypes.ExportedApp{
-		AppState:        appState,
 		Validators:      validators,
 		Height:          height,
 		ConsensusParams: app.BaseApp.GetConsensusParams(ctx),
